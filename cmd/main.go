@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -133,9 +134,17 @@ func readConfig(configPath string) map[string]string {
 }
 
 func main() {
-	var configPath = "./config"
+	// Obtiene la ruta del ejecutable
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Println("error obteniendo la ruta del ejecutable:", err)
+		os.Exit(1)
+	}
+	execDir := filepath.Dir(exePath)
+	configPath := filepath.Join(execDir, "config")
+
 	var config map[string]string
-	_, err := os.Stat(configPath)
+	_, err = os.Stat(configPath)
 	if os.IsNotExist(err) {
 		fmt.Println("configuration file \"config\" does not exist, creating default configuration...")
 		file, err := os.Create(configPath)
