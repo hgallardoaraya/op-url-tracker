@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func getHTML(url string) (string, error) {
@@ -62,13 +63,7 @@ func sendTgMessage(token string, text string, strChatId string) error {
 	return nil
 }
 
-func searchClassnameInHtml(config map[string]string) {
-	url := config["URL"]
-	className := config["CLASSNAME"]
-	token := config["TOKEN"]
-	text := config["MESSAGE"]
-	chatId := config["CHAT_ID"]
-
+func sendTgMessageWhenFound(url string, className string, token string, text string, chatId string, wg *sync.WaitGroup) {
 	html, err := getHTML(url)
 	if err != nil {
 		fmt.Println(err)
@@ -76,13 +71,36 @@ func searchClassnameInHtml(config map[string]string) {
 	}
 
 	if containsClassName(html, className) {
-		err := sendTgMessage(token, text, chatId)
+		err := sendTgMessage(token, fmt.Sprintf("%s\n%s", text, url), chatId)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
 
+	fmt.Println("Se ha finalizado la ejecución para " + url)
+	wg.Done()
+}
+
+func trackUrls(config map[string]string) {
+	urls := strings.Split(config["URLS"], ",")
+	classNames := strings.Split(config["CLASSNAMES"], ",")
+	token := config["TOKEN"]
+	text := config["MESSAGE"]
+	chatId := config["CHAT_ID"]
+	var wg sync.WaitGroup
+
+	if len(urls) != len(classNames) {
+		fmt.Println("urls and classnames must be the same size")
+		os.Exit(1)
+	}
+
+	for i, url := range urls {
+		wg.Add(1)
+		go sendTgMessageWhenFound(url, classNames[i], token, text, chatId, &wg)
+	}
+
+	wg.Wait()
 	os.Exit(0)
 }
 
@@ -95,8 +113,8 @@ func writeStringWrapper(file *os.File, str string) {
 }
 
 func writeDefaultConfig(file *os.File) {
-	writeStringWrapper(file, "URL=https://www.montasycomicsnyc.com/mtg-events/mtg-modern-horizons-3-launch-weekend-fri-614-sun-616\n")
-	writeStringWrapper(file, "CLASSNAME=product-grid__item-overlay\n")
+	writeStringWrapper(file, "URLS=https://www.montasycomicsnyc.com/mtg-events/mtg-modern-horizons-3-launch-weekend-fri-614-sun-616\n")
+	writeStringWrapper(file, "CLASSNAMES=product-grid__item-overlay\n")
 	writeStringWrapper(file, "TOKEN=6939137646:AAHumX9pZKc2r6bbHDl0k-4H0LMBwmnRcrM\n")
 	writeStringWrapper(file, "CHAT_ID=6669733397\n")
 	writeStringWrapper(file, "MESSAGE=An event has appeared")
@@ -175,5 +193,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	searchClassnameInHtml(config)
+	trackUrls(config)
 }
