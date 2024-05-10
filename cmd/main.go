@@ -133,7 +133,7 @@ func readConfig(configPath string) map[string]string {
 	return config
 }
 
-func main() {
+func getConfigPath(configFileName string) string {
 	// Obtiene la ruta del ejecutable
 	exePath, err := os.Executable()
 	if err != nil {
@@ -141,10 +141,12 @@ func main() {
 		os.Exit(1)
 	}
 	execDir := filepath.Dir(exePath)
-	configPath := filepath.Join(execDir, "config")
+	return filepath.Join(execDir, configFileName)
+}
 
+func getConfig(configPath string) map[string]string {
 	var config map[string]string
-	_, err = os.Stat(configPath)
+	_, err := os.Stat(configPath)
 	if os.IsNotExist(err) {
 		fmt.Println("configuration file \"config\" does not exist, creating default configuration...")
 		file, err := os.Create(configPath)
@@ -160,6 +162,13 @@ func main() {
 	} else {
 		config = readConfig(configPath)
 	}
+	return config
+}
+
+func main() {
+	configFileName := "config"
+	configPath := getConfigPath(configFileName)
+	config := getConfig(configPath)
 
 	if config == nil {
 		fmt.Println("error reading configuration file")
